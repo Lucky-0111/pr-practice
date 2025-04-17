@@ -11,7 +11,7 @@ public class UserTest {
         User user = new User("john_doe", "john.doe@example.com");
 
         // 유저 값 검증
-        assertThat(user.getUsername()).isEqualTo("1john_doe");
+        assertThat(user.getUsername()).isEqualTo("john_doe");
         assertThat(user.getEmail()).isEqualTo("john.doe@example.com");
     }
 
