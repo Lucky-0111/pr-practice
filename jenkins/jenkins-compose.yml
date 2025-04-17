@@ -4,7 +4,7 @@ services:
     user: root
     container_name: jenkins
     ports:
-      - "9060:8080"       # Jenkins 웹 인터페이스
+      - "8080:8080"       # Jenkins 웹 인터페이스
       - "50000:50000"     # 에이전트 연결용 포트
     volumes:
       - jenkins_home:/var/jenkins_home
