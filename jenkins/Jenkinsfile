@@ -6,7 +6,7 @@ pipeline {
         string(name: 'IMAGE_NAME', defaultValue: 'your-org-or-id/your-repo', description: 'Docker 이미지 이름')
         string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker 이미지 태그')
         string(name: 'CONTAINER_NAME', defaultValue: 'myapp-container', description: '실행할 컨테이너 이름')
-        string(name: 'PORT', defaultValue: '8080', description: '컨테이너 포트')
+        string(name: 'PORT', defaultValue: '8443', description: '컨테이너 포트')
     }
 
     environment {
@@ -14,6 +14,15 @@ pipeline {
     }
 
     stages {
+        stage('Authenticate with GHCR') {
+            steps {
+                echo 'GHCR에 인증 중...'
+                withCredentials([string(credentialsId: 'github_access_token', variable: 'GITHUB_TOKEN')]) {
+                    sh 'echo $GITHUB_TOKEN | docker login ghcr.io -u Lucky-0111 --password-stdin'
+                }
+            }
+        }
+
         stage('Pull Docker Image') {
             steps {
                 echo "Docker 이미지 가져오는 중... (이미지: \$IMAGE)"
