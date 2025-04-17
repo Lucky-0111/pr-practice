@@ -12,3 +12,6 @@ services:
     restart: always
     environment:
       - JAVA_OPS=-Xmx1g
+
+volumes:
+  jenkins_home:
