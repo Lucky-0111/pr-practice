@@ -1,15 +1,17 @@
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    build: .
     container_name: jenkins
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "9060:8080"       # Jenkins 웹 인터페이스
+      - "50000:50000"     # 에이전트 연결용 포트
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock # Jenkins에서 Docker 제어
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - JAVA_OPS=-Xmx1g
 
 volumes:
   jenkins_home:

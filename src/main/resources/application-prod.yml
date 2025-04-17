@@ -1,0 +1,3 @@
+server:
+  port: 8080
+  forward-headers-strategy: native  # 헤더를 통해 원본 프로토콜을 인식
