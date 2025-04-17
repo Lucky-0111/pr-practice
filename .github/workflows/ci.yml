@@ -37,7 +37,6 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-        run: chmod +x ./gradlew
 
       # 4. 테스트 실행 (테스트 실패 시 이후 단계 실행되지 않음)
       - name: Run tests
