@@ -72,4 +72,4 @@ jobs:
       # 8. Jenkins로 웹훅 전달
       - name: Trigger Jenkins Deploy via Webhook
         run: |
-          curl -X POST "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB }}/buildWithParameters?token=${{ secrets.JENKINS_TOKEN }}
+          curl -X POST "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB }}/buildWithParameters?token=${{ secrets.JENKINS_TOKEN }}"
