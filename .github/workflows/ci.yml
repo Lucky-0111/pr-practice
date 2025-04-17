@@ -1,0 +1,68 @@
+name: Docker Image CI
+
+# main 브랜치에 push될 때 실행
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    # GHCR에 푸시하려면 권한 필요
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. 코드 가져오기
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. JDK 설정 (Spring Boot 프로젝트일 경우)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Gradle 캐시 설정 (속도 향상)
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. 테스트 실행 (테스트 실패 시 이후 단계 실행되지 않음)
+      - name: Run tests
+        run: ./gradlew test
+
+      # 5. GHCR 로그인 (github.actor & GITHUB_TOKEN 사용)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 6. Docker 태그/레이블 메타데이터 추출
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      # 7. Docker 이미지 빌드 및 GHCR로 푸시
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
