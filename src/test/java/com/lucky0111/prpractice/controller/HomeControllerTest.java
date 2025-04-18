@@ -20,6 +20,6 @@ public class HomeControllerTest {
         // 홈 엔드포인트 테스트
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ci/cd 최종"));
+                .andExpect(content().string("ci/cd 최최최종"));
     }
 }
