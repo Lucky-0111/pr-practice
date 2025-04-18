@@ -1,51 +1,76 @@
 package com.lucky0111.prpractice.entity;
 
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class UserTest {
 
     @Test
-    void testUserEntity() {
-        // 유저 엔티티 생성
-        User user = new User("john_doe", "john.doe@example.com");
-
-        // 유저 값 검증
-        assertThat(user.getUsername()).isEqualTo("john_doe");
-        assertThat(user.getEmail()).isEqualTo("john.doe@example.com");
+    void testDefaultConstructor() {
+        User user = new User();
+        assertNull(user.getId());
+        assertNull(user.getUsername());
+        assertNull(user.getEmail());
     }
 
     @Test
-    void testSettersAndGetters() {
-        // 유저 엔티티 생성
+    void testParameterizedConstructor() {
+        String username = "testUser";
+        String email = "test@example.com";
+        User user = new User(username, email);
+
+        assertNull(user.getId());
+        assertEquals(username, user.getUsername());
+        assertEquals(email, user.getEmail());
+    }
+
+    @Test
+    void testGettersAndSetters() {
         User user = new User();
 
-        // 값을 설정
-        user.setUsername("jane_doe");
-        user.setEmail("jane.doe@example.com");
+        Long id = 1L;
+        String username = "testUser";
+        String email = "test@example.com";
 
-        // 설정된 값 검증
-        assertThat(user.getUsername()).isEqualTo("jane_doe");
-        assertThat(user.getEmail()).isEqualTo("jane.doe@example.com");
+        user.setId(id);
+        user.setUsername(username);
+        user.setEmail(email);
+
+        assertEquals(id, user.getId());
+        assertEquals(username, user.getUsername());
+        assertEquals(email, user.getEmail());
     }
 
     @Test
-    void testEmptyUser() {
-        // 빈 유저 엔티티 생성
-        User user = new User();
+    void testEqualsAndHashCode() {
+        User user1 = new User("user1", "user1@example.com");
+        user1.setId(1L);
 
-        // 기본값 검증
-        assertThat(user.getUsername()).isNull();
-        assertThat(user.getEmail()).isNull();
+        User user2 = new User("user1", "user1@example.com");
+        user2.setId(1L);
+
+        User user3 = new User("user2", "user2@example.com");
+        user3.setId(2L);
+
+        // Test equals
+        assertEquals(user1, user2);
+        assertNotEquals(user1, user3);
+
+        // Test hashCode
+        assertEquals(user1.hashCode(), user2.hashCode());
+        assertNotEquals(user1.hashCode(), user3.hashCode());
     }
 
     @Test
-    void testUserConstructor() {
-        // 생성자에서 직접 값을 설정하여 유저 객체 생성
-        User user = new User("alice_smith", "alice.smith@example.com");
+    void testToString() {
+        User user = new User("testUser", "test@example.com");
+        user.setId(1L);
 
-        // 생성자에서 설정한 값 검증
-        assertThat(user.getUsername()).isEqualTo("alice_smith");
-        assertThat(user.getEmail()).isEqualTo("alice.smith@example.com");
+        String toString = user.toString();
+
+        // Verify toString contains all field values
+        assertTrue(toString.contains("id=1"));
+        assertTrue(toString.contains("username=testUser"));
+        assertTrue(toString.contains("email=test@example.com"));
     }
 }
