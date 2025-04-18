@@ -10,6 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HomeController {
     @GetMapping
     public ResponseEntity<?> home() {
-        return ResponseEntity.ok("ci/cd 최종");
+        return ResponseEntity.ok("ci/cd 최최종");
     }
 }

@@ -1,0 +1,51 @@
+name: 2. Build Docker Image
+
+# 테스트 워크플로우가 성공적으로 완료되면 실행
+on:
+  workflow_run:
+    workflows: ["1. Run Tests"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  build:
+    # 테스트 워크플로우가 성공한 경우에만 실행
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    
+    # GHCR에 푸시하려면 권한 필요
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      # 1. 코드 가져오기
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      # 2. GHCR 로그인 (github.actor & GITHUB_TOKEN 사용)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Docker 태그/레이블 메타데이터 추출
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      # 4. Docker 이미지 빌드 및 GHCR로 푸시
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
