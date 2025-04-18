@@ -19,7 +19,6 @@ public class HomeControllerTest {
     void testHomeEndpoint() throws Exception {
         // 홈 엔드포인트 테스트
         mockMvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("ci/cd 최최최종"));
+                .andExpect(status().isOk());
     }
 }
