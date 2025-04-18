@@ -48,7 +48,7 @@ jobs:
       # 6. 테스트 결과 아티팩트 업로드
       - name: Upload Test Status
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-status
           path: test_status.txt
