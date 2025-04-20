@@ -1,0 +1,137 @@
+name: 4. Send Workflow Results to Slack
+
+# 웹훅 워크플로우가 완료되면 실행
+on:
+  workflow_run:
+    workflows: ["3. Trigger Jenkins Webhook"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  slack-notification:
+    runs-on: ubuntu-latest
+    # 모든 워크플로우의 결과에 관계없이 실행 (성공, 실패 모두 알림)
+    steps:
+      # 1. 커밋 메시지 표시
+      - name: Display Commit Message
+        run: |
+          echo "Commit Message: ${{ github.event.workflow_run.head_commit.message }}"
+
+      # 2. 코드 가져오기
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 3. 워크플로우 실행 정보 가져오기
+      - name: Get workflow run information
+        id: workflow_info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 현재 워크플로우 실행 정보 (webhook)
+            const webhookWorkflow = {
+              name: "3. Trigger Jenkins Webhook",
+              conclusion: "${{ github.event.workflow_run.conclusion }}",
+              url: "${{ github.event.workflow_run.html_url }}"
+            };
+
+            // 이미지 빌드 워크플로우 실행 정보 가져오기
+            const buildImageRuns = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "build_image.yml",
+              head_sha: "${{ github.event.workflow_run.head_sha }}"
+            });
+
+            const buildImageWorkflow = buildImageRuns.data.workflow_runs.length > 0 ? {
+              name: "2. Build Docker Image",
+              conclusion: buildImageRuns.data.workflow_runs[0].conclusion,
+              url: buildImageRuns.data.workflow_runs[0].html_url
+            } : null;
+
+            // 테스트 워크플로우 실행 정보 가져오기
+            const testRuns = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "test.yml",
+              head_sha: "${{ github.event.workflow_run.head_sha }}"
+            });
+
+            const testWorkflow = testRuns.data.workflow_runs.length > 0 ? {
+              name: "1. Run Tests",
+              conclusion: testRuns.data.workflow_runs[0].conclusion,
+              url: testRuns.data.workflow_runs[0].html_url
+            } : null;
+
+            // 결과를 출력 변수로 설정
+            core.setOutput("test_conclusion", testWorkflow ? testWorkflow.conclusion : "unknown");
+            core.setOutput("test_url", testWorkflow ? testWorkflow.url : "");
+            core.setOutput("build_image_conclusion", buildImageWorkflow ? buildImageWorkflow.conclusion : "unknown");
+            core.setOutput("build_image_url", buildImageWorkflow ? buildImageWorkflow.url : "");
+            core.setOutput("webhook_conclusion", webhookWorkflow.conclusion);
+            core.setOutput("webhook_url", webhookWorkflow.url);
+
+      # 4. Slack으로 모든 워크플로우 결과 전송
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "CI/CD 파이프라인 결과 알림",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*커밋 메시지:* ${{ github.event.workflow_run.head_commit.message }}"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*1. 테스트 워크플로우:* ${{ steps.workflow_info.outputs.test_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.test_url }}|워크플로우 실행 링크>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*2. Docker 이미지 빌드 워크플로우:* ${{ steps.workflow_info.outputs.build_image_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.build_image_url }}|워크플로우 실행 링크>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*3. Jenkins 웹훅 워크플로우:* ${{ steps.workflow_info.outputs.webhook_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.webhook_url }}|워크플로우 실행 링크>"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "GitHub Actions CI/CD 파이프라인 | ${{ github.repository }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

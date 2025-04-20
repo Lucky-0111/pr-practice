@@ -93,7 +93,12 @@ CI/CD의 핵심은 자동화입니다. 코드 통합, 테스트, 빌드, 배포 
 ### 5단계: 배포 (CD)
 - Jenkins가 GitHub Container Registry에서 최신 Docker 이미지를 가져옵니다.
 - 기존 컨테이너를 중지하고 새 이미지로 컨테이너를 실행합니다.
-- 배포 결과를 모니터링하고 성공/실패 여부를 알립니다.
+- 배포 결과를 모니터링합니다.
+
+### 6단계: 결과 알림
+- 모든 워크플로우(테스트, 빌드, 웹훅)의 실행 결과를 수집합니다.
+- 각 단계의 성공/실패 여부를 Slack을 통해 개발팀에 알립니다.
+- 이를 통해 파이프라인의 전체 상태를 한눈에 파악할 수 있습니다.
 
 ## 5. 주요 용어 설명
 
@@ -426,7 +431,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Jenkins로 웹훅 전달
+      # 1. 커밋 메시지 표시
+      - name: Display Commit Message
+        run: |
+          echo "Commit Message: ${{ github.event.workflow_run.head_commit.message }}"
+
+      # 2. Jenkins로 웹훅 전달
       - name: Trigger Jenkins Build with Crumb
         run: |
           set +x
@@ -436,6 +446,56 @@ jobs:
           curl -X POST "${{ secrets.JENKINS_URL }}/job/practice/buildWithParameters?token=${{ secrets.JENKINS_AUTH_TOKEN }}" \
             --user "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
             -H "$CRUMB"
+```
+
+#### 4. Slack 알림 워크플로우 (slack_notification.yml)
+```yaml
+name: 4. Send Workflow Results to Slack
+
+# 웹훅 워크플로우가 완료되면 실행
+on:
+  workflow_run:
+    workflows: ["3. Trigger Jenkins Webhook"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  slack-notification:
+    runs-on: ubuntu-latest
+    # 모든 워크플로우의 결과에 관계없이 실행 (성공, 실패 모두 알림)
+    steps:
+      # 1. 커밋 메시지 표시
+      - name: Display Commit Message
+        run: |
+          echo "Commit Message: ${{ github.event.workflow_run.head_commit.message }}"
+
+      # 2. 코드 가져오기
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 3. 워크플로우 실행 정보 가져오기
+      - name: Get workflow run information
+        id: workflow_info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 모든 워크플로우의 실행 정보를 수집하여 Slack 메시지에 포함
+
+      # 4. Slack으로 모든 워크플로우 결과 전송
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                // 모든 워크플로우 상태를 포함한 메시지 블록
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 ```
 
 ### Jenkins 파이프라인 (Jenkinsfile)

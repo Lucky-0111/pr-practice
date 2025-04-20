@@ -1,55 +1,68 @@
+# 워크플로우 이름: 1번째 단계 - 테스트 실행
 name: 1. Run Tests
 
-# main 브랜치에 push될 때 실행
+# 트리거 조건: main 브랜치에 push될 때만 실행됩니다.
+# paths 조건은 src 디렉토리 내 파일이 변경되었을 때만 워크플로우가 실행됨을 의미합니다.
 on:
   push:
     branches:
-      - main
+      - main  # main 브랜치에 대해서만 실행
     paths:
-      - 'src/**'
+      - 'src/**'  # src 디렉토리 내 파일이 변경될 때만 실행
 
+# 실행할 작업(job) 정의
 jobs:
+  # 테스트 작업 정의
   test:
+    # 실행 환경: Ubuntu 최신 버전
     runs-on: ubuntu-latest
-    
+
+    # 작업 단계(steps) 정의
     steps:
-      # 1. 코드 가져오기
+      # 1. 커밋 메시지 표시
+      - name: Display Commit Message
+        run: |
+          echo "Commit Message: ${{ github.event.head_commit.message }}"
+
+      # 2. 코드 가져오기: GitHub 저장소에서 코드를 가져옵니다.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # 공식 checkout 액션 v4 버전 사용
 
-      # 2. JDK 설정 (Spring Boot 프로젝트일 경우)
+      # 2. JDK 설정: Java 17 설치 (Spring Boot 프로젝트용)
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v3  # 공식 Java 설정 액션 v3 버전 사용
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: '17'  # Java 버전 지정
+          distribution: 'temurin'  # JDK 배포판 지정 (Eclipse Temurin)
 
-      # 3. Gradle 캐시 설정 (속도 향상)
+      # 3. Gradle 캐시 설정: 빌드 속도 향상을 위해 Gradle 의존성 캐싱
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v3  # 공식 캐시 액션 v3 버전 사용
         with:
-          path: |
+          path: |  # 캐시할 경로 (여러 줄로 표현)
             ~/.gradle/caches
             ~/.gradle/wrapper
+          # 캐시 키 설정: OS와 Gradle 파일 해시값 조합으로 고유 키 생성
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          # 캐시 복원 키: 정확히 일치하는 캐시가 없을 때 사용
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 4. 테스트 실행
+      # 4. 테스트 실행: Gradle 테스트 명령 실행
       - name: Run tests
-        run: chmod +x ./gradlew && ./gradlew test
-        
-      # 5. 테스트 결과를 저장하여 다음 워크플로에 알림
+        run: chmod +x ./gradlew && ./gradlew test  # gradlew에 실행 권한 부여 후 테스트 실행
+
+      # 5. 테스트 결과 저장: 테스트 상태를 파일로 저장
       - name: Create Test Status
-        if: always()
+        if: always()  # 이전 단계 결과와 상관없이 항상 실행
         run: |
-          echo "Test completed successfully" > test_status.txt
-          
-      # 6. 테스트 결과 아티팩트 업로드
+          echo "Test completed successfully" > test_status.txt  # 상태 메시지를 파일에 저장
+
+      # 6. 테스트 결과 아티팩트 업로드: 다른 워크플로우에서 사용할 수 있도록 결과 저장
       - name: Upload Test Status
-        if: success()
-        uses: actions/upload-artifact@v4
+        if: success()  # 테스트가 성공했을 때만 실행
+        uses: actions/upload-artifact@v4  # 공식 아티팩트 업로드 액션 v4 버전 사용
         with:
-          name: test-status
-          path: test_status.txt
-          retention-days: 1
+          name: test-status  # 아티팩트 이름
+          path: test_status.txt  # 업로드할 파일 경로
+          retention-days: 1  # 아티팩트 보관 기간(일)
