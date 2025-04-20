@@ -10,6 +10,11 @@ on:
     paths:
       - 'src/**'  # src 디렉토리 내 파일이 변경될 때만 실행
 
+# GitHub Actions에 필요한 권한 설정
+permissions:
+  checks: write
+  contents: read
+
 # 실행할 작업(job) 정의
 jobs:
   # 테스트 작업 정의
