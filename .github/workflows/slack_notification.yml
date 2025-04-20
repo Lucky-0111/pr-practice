@@ -169,6 +169,13 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
+                    "text": "*테스트 결과 요약:*\n• 총 테스트: ${{ steps.workflow_info.outputs.test_total || '0' }}\n• 성공: ${{ steps.workflow_info.outputs.test_success || '0' }} ✅\n• 실패: ${{ steps.workflow_info.outputs.test_failed || '0' }} ❌\n• 스킵: ${{ steps.workflow_info.outputs.test_skipped || '0' }} ⏭️"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
                     "text": "*커밋 메시지:* ${{ github.event.workflow_run.head_commit.message }}"
                   }
                 },
