@@ -101,21 +101,21 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*1. 테스트 워크플로우:* ${{ steps.workflow_info.outputs.test_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.test_url }}|워크플로우 실행 링크>"
+                    "text": "*1. 테스트 워크플로우:* ${{ steps.workflow_info.outputs.test_conclusion == 'success' && '✅ 성공' || steps.workflow_info.outputs.test_conclusion == 'skipped' && '⏭️ 스킵' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.test_url }}|워크플로우 실행 링크>"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*2. Docker 이미지 빌드 워크플로우:* ${{ steps.workflow_info.outputs.build_image_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.build_image_url }}|워크플로우 실행 링크>"
+                    "text": "*2. Docker 이미지 빌드 워크플로우:* ${{ steps.workflow_info.outputs.build_image_conclusion == 'success' && '✅ 성공' || steps.workflow_info.outputs.build_image_conclusion == 'skipped' && '⏭️ 스킵' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.build_image_url }}|워크플로우 실행 링크>"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*3. Jenkins 웹훅 워크플로우:* ${{ steps.workflow_info.outputs.webhook_conclusion == 'success' && '✅ 성공' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.webhook_url }}|워크플로우 실행 링크>"
+                    "text": "*3. Jenkins 웹훅 워크플로우:* ${{ steps.workflow_info.outputs.webhook_conclusion == 'success' && '✅ 성공' || steps.workflow_info.outputs.webhook_conclusion == 'skipped' && '⏭️ 스킵' || '❌ 실패' }}\n<${{ steps.workflow_info.outputs.webhook_url }}|워크플로우 실행 링크>"
                   }
                 },
                 {

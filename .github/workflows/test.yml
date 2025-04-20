@@ -16,15 +16,10 @@ jobs:
   test:
     # 실행 환경: Ubuntu 최신 버전
     runs-on: ubuntu-latest
-
+    
     # 작업 단계(steps) 정의
     steps:
-      # 1. 커밋 메시지 표시
-      - name: Display Commit Message
-        run: |
-          echo "Commit Message: ${{ github.event.head_commit.message }}"
-
-      # 2. 코드 가져오기: GitHub 저장소에서 코드를 가져옵니다.
+      # 1. 코드 가져오기: GitHub 저장소에서 코드를 가져옵니다.
       - name: Checkout repository
         uses: actions/checkout@v4  # 공식 checkout 액션 v4 버전 사용
 
@@ -51,13 +46,13 @@ jobs:
       # 4. 테스트 실행: Gradle 테스트 명령 실행
       - name: Run tests
         run: chmod +x ./gradlew && ./gradlew test  # gradlew에 실행 권한 부여 후 테스트 실행
-
+        
       # 5. 테스트 결과 저장: 테스트 상태를 파일로 저장
       - name: Create Test Status
         if: always()  # 이전 단계 결과와 상관없이 항상 실행
         run: |
           echo "Test completed successfully" > test_status.txt  # 상태 메시지를 파일에 저장
-
+          
       # 6. 테스트 결과 아티팩트 업로드: 다른 워크플로우에서 사용할 수 있도록 결과 저장
       - name: Upload Test Status
         if: success()  # 테스트가 성공했을 때만 실행
