@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HomeController {
     @GetMapping
     public ResponseEntity<?> home() {
-        // 테스트용 주석입니다ㅇㅇ
+        // 테스트용 주석입니다ㅇㅇㅇ
         return ResponseEntity.notFound().build();
     }
 }
