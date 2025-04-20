@@ -218,7 +218,7 @@ jobs:
                   "elements": [
                     {
                       "type": "mrkdwn",
-                      "text": "GitHub Actions CI/CD 파이프라인 | ${{ github.repository }}"
+                      "text": "GitHub Actions | ${{ github.repository }}"
                     }
                   ]
                 }
