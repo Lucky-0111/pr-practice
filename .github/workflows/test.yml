@@ -17,6 +17,12 @@ jobs:
     # 실행 환경: Ubuntu 최신 버전
     runs-on: ubuntu-latest
     
+    # 권한 설정: 테스트 결과를 GitHub에 올리기 위한 권한
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+    
     # 작업 단계(steps) 정의
     steps:
       # 1. 코드 가져오기: GitHub 저장소에서 코드를 가져옵니다.
@@ -57,7 +63,9 @@ jobs:
           report_paths: '**/build/test-results/**/*.xml'
           detailed_summary: true  # 상세 요약 표시
           include_passed: true    # 통과한 테스트도 표시
-          check_name: '테스트 리포트'
+          require_tests: false    # 테스트가 없어도 오류가 발생하지 않음
+          check_name: ''          # 체크 이름을 비워두어 기본 이름 사용
+          commit: ${{ github.sha }}
           fail_on_failure: false  # 테스트 실패시에도 워크플로우는 계속 진행
 
       # 6. 테스트 결과 추가 표시 (UI 향상)
@@ -68,7 +76,7 @@ jobs:
           files: |
             **/build/test-results/**/*.xml
           report_individual_runs: true
-          check_name: '테스트 결과 요약'
+          check_name: '테스트 결과'
           comment_mode: always
           compare_to_earlier_commit: true
 
@@ -99,30 +107,8 @@ jobs:
           # GitHub 작업 요약에 테스트 결과 표시
           echo "## 🧪 테스트 결과 요약" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 카테고리 | 수량 | 상태 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 분류 | 수 | 상태 |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 총 테스트 | $TOTAL_TESTS | - |" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "$SUCCESS_TESTS" -gt 0 ]; then
-            SUCCESS_PERCENT=$(echo "scale=2; ($SUCCESS_TESTS / $TOTAL_TESTS) * 100" | bc -l)
-            echo "| 성공 | $SUCCESS_TESTS | ✅ ($SUCCESS_PERCENT%) |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 성공 | 0 | ✅ (0%) |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "$FAILED_TESTS" -gt 0 ]; then
-            FAILED_PERCENT=$(echo "scale=2; ($FAILED_TESTS / $TOTAL_TESTS) * 100" | bc -l)
-            echo "| 실패 | $FAILED_TESTS | ❌ ($FAILED_PERCENT%) |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 실패 | 0 | ❌ (0%) |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "$SKIPPED_TESTS" -gt 0 ]; then
-            SKIPPED_PERCENT=$(echo "scale=2; ($SKIPPED_TESTS / $TOTAL_TESTS) * 100" | bc -l)
-            echo "| 스킵 | $SKIPPED_TESTS | ⏭️ ($SKIPPED_PERCENT%) |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 스킵 | 0 | ⏭️ (0%) |" >> $GITHUB_STEP_SUMMARY
-          fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "$FAILED_TESTS" -gt 0 ]; then
@@ -169,10 +155,6 @@ jobs:
             <div class="container">
               <h1>🧪 테스트 결과 요약</h1>
               <div class="summary">
-                <div class="summary-item">
-                  <div class="number">${{ steps.test_summary.outputs.total_tests }}</div>
-                  <div>총 테스트</div>
-                </div>
                 <div class="summary-item">
                   <div class="number success">${{ steps.test_summary.outputs.success_tests }} ✅</div>
                   <div>성공</div>
@@ -235,4 +217,4 @@ jobs:
         with:
           name: test-status  # 아티팩트 이름
           path: test_status.txt  # 업로드할 파일 경로
-          retention-days: 7  # 아티팩트 보관 기간(일)
+          retention-days: 1  # 아티팩트 보관 기간(일)
