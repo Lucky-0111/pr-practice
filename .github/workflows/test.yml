@@ -45,17 +45,77 @@ jobs:
 
       # 4. 테스트 실행: Gradle 테스트 명령 실행
       - name: Run tests
-        run: chmod +x ./gradlew && ./gradlew test  # gradlew에 실행 권한 부여 후 테스트 실행
-        
-      # 5. 테스트 결과 저장: 테스트 상태를 파일로 저장
-      - name: Create Test Status
-        if: always()  # 이전 단계 결과와 상관없이 항상 실행
+        run: chmod +x ./gradlew && ./gradlew test --scan  # gradlew에 실행 권한 부여 후 테스트 실행
+        continue-on-error: true  # 테스트가 실패해도 다음 단계로 진행
+
+      # 5. 테스트 결과 수집 및 GitHub Actions에 표시
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()  # 테스트 결과에 상관없이 항상 실행
+        with:
+          files: |
+            **/build/test-results/**/*.xml
+
+      # 6. 테스트 결과 요약 계산
+      - name: Calculate Test Summary
+        id: test_summary
+        if: always()
         run: |
-          echo "Test completed successfully" > test_status.txt  # 상태 메시지를 파일에 저장
+          TOTAL_TESTS=$(find . -path "*/build/test-results/*/*.xml" -type f -exec grep -l "<testcase" {} \; | xargs grep -h "<testcase" | wc -l)
+          FAILED_TESTS=$(find . -path "*/build/test-results/*/*.xml" -type f -exec grep -l "<failure" {} \; | xargs grep -h "<failure" | wc -l)
+          SKIPPED_TESTS=$(find . -path "*/build/test-results/*/*.xml" -type f -exec grep -l "<skipped" {} \; | xargs grep -h "<skipped" | wc -l)
+          SUCCESS_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
           
-      # 6. 테스트 결과 아티팩트 업로드: 다른 워크플로우에서 사용할 수 있도록 결과 저장
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "success_tests=$SUCCESS_TESTS" >> $GITHUB_OUTPUT
+          echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "skipped_tests=$SKIPPED_TESTS" >> $GITHUB_OUTPUT
+          
+          # 테스트 상태 결정
+          if [ "$FAILED_TESTS" -gt 0 ]; then
+            echo "Test completed with failures: $FAILED_TESTS failed, $SUCCESS_TESTS succeeded, $SKIPPED_TESTS skipped out of $TOTAL_TESTS total tests" > test_status.txt
+            echo "status=failed" >> $GITHUB_OUTPUT
+          else
+            echo "Test completed successfully: $SUCCESS_TESTS succeeded, $SKIPPED_TESTS skipped out of $TOTAL_TESTS total tests" > test_status.txt
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+          
+          cat test_status.txt
+
+      # 7. 테스트 결과 보고서 생성
+      - name: Generate Test Report
+        if: always()
+        run: |
+          mkdir -p test-reports
+          cat << EOF > test-reports/test-summary.md
+          # 테스트 결과 요약
+          
+          ## 통계
+          - 총 테스트 수: ${{ steps.test_summary.outputs.total_tests }}
+          - 성공: ${{ steps.test_summary.outputs.success_tests }} ✅
+          - 실패: ${{ steps.test_summary.outputs.failed_tests }} ❌
+          - 스킵: ${{ steps.test_summary.outputs.skipped_tests }} ⏭️
+          
+          ## 상태
+          - 테스트 결과: ${{ steps.test_summary.outputs.status == 'success' && '✅ 성공' || '❌ 실패' }}
+          
+          *이 보고서는 자동으로 생성되었습니다.*
+          EOF
+      
+      # 8. 테스트 보고서 아티팩트로 업로드
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            test-reports/
+            **/build/reports/tests/
+          retention-days: 7  # 보고서를 7일간 보관
+
+      # 9. 테스트 결과 아티팩트 업로드: 다른 워크플로우에서 사용할 수 있도록 결과 저장
       - name: Upload Test Status
-        if: success()  # 테스트가 성공했을 때만 실행
+        if: always()  # 항상 테스트 상태 업로드 
         uses: actions/upload-artifact@v4  # 공식 아티팩트 업로드 액션 v4 버전 사용
         with:
           name: test-status  # 아티팩트 이름
