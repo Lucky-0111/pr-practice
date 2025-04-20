@@ -83,7 +83,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "CI/CD 파이프라인 결과 알림",
+                    "text": "Workflows 결과 알림",
                     "emoji": true
                   }
                 },
