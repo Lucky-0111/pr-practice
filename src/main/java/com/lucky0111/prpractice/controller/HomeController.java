@@ -11,6 +11,7 @@ public class HomeController {
     @GetMapping
     public ResponseEntity<?> home() {
         // 테스트용 주석입니다ㅇㅇㅇ
+        // 코드
         return ResponseEntity.notFound().build();
     }
 }
