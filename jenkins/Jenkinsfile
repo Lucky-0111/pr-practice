@@ -7,6 +7,8 @@ pipeline {
         string(name: 'IMAGE_TAG', defaultValue: 'main', description: 'Docker 이미지 태그')
         string(name: 'CONTAINER_NAME', defaultValue: 'myapp-container', description: '실행할 컨테이너 이름')
         string(name: 'PORT', defaultValue: '8443', description: '컨테이너 포트')
+        string(name: 'N8N_URL', description: 'n8n 주소')
+        string(name: 'N8N_WEBHOOK_ID', description: 'n8n 웹훅 ID')
     }
 
     environment {
@@ -35,29 +37,29 @@ pipeline {
             }
         }
 
-        stage('Stop Previous Container') {
-            steps {
-                echo '기존 컨테이너 중지 중...'
-
-                // 컨테이너가 실행 중이면 중지 후 제거
-                sh "docker stop \$CONTAINER_NAME || true"
-                sh "docker rm \$CONTAINER_NAME || true"
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                echo '새 컨테이너 실행 중...'
-
-                // 새 이미지로 컨테이너 실행
-                sh """
-                docker run -d \
-                  --name \$CONTAINER_NAME \
-                  -p \$PORT:\$PORT \
-                  \$IMAGE
-                """
-            }
-        }
+//         stage('Stop Previous Container') {
+//             steps {
+//                 echo '기존 컨테이너 중지 중...'
+//
+//                 // 컨테이너가 실행 중이면 중지 후 제거
+//                 sh "docker stop \$CONTAINER_NAME || true"
+//                 sh "docker rm \$CONTAINER_NAME || true"
+//             }
+//         }
+//
+//         stage('Run New Container') {
+//             steps {
+//                 echo '새 컨테이너 실행 중...'
+//
+//                 // 새 이미지로 컨테이너 실행
+//                 sh """
+//                 docker run -d \
+//                   --name \$CONTAINER_NAME \
+//                   -p \$PORT:\$PORT \
+//                   \$IMAGE
+//                 """
+//             }
+//         }
     }
 
     post {

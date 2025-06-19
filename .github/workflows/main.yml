@@ -1,0 +1,57 @@
+name: 🚀 Main CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # PR에 대해서만 테스트 실행
+  test-on-pr:
+    name: 📋 PR 테스트 단계
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  # Push에 대해서만 빌드 및 배포 실행
+  build-and-deploy:
+    name: 빌드 & 배포 단계
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  # 워크플로우 완료 알림
+  notify-completion:
+    name: 파이프라인 완료 알림
+    if: always() && github.event_name == 'push'
+    needs: [ build-and-deploy ]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Pipeline 완료 알림 전송
+        run: |
+          WEBHOOK_URL="${{ secrets.N8N_WEBHOOK_URL_PIPELINE }}"
+          
+          if [ "${{ needs.build-and-deploy.result }}" = "success" ]; then
+            STATUS="success"
+            MESSAGE="🎉 CI/CD Pipeline이 성공적으로 완료되었습니다!"
+            DETAILS="${{ github.ref_name }} 브랜치의 모든 작업이 성공적으로 완료되었습니다"
+          else
+            STATUS="failure" 
+            MESSAGE="💥 CI/CD Pipeline이 실패했습니다."
+            DETAILS="${{ github.ref_name }} 브랜치의 파이프라인이 실패했습니다. 개별 작업 로그를 확인해주세요."
+          fi
+          
+          curl -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"status\": \"$STATUS\",
+              \"message\": \"$MESSAGE\",
+              \"branch\": \"${{ github.ref_name }}\",
+              \"commit_sha\": \"${{ github.sha }}\",
+              \"details\": \"$DETAILS\",
+              \"repository\": \"${{ github.repository }}\",
+              \"workflow_name\": \"Main CI/CD Pipeline\",
+              \"workflow_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+            }" || echo "알림 전송에 실패했습니다"

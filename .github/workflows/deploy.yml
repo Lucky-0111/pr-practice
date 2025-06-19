@@ -1,0 +1,140 @@
+name: EC2 Deploy 워크플로우
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '배포할 Docker 이미지 태그'
+        required: true
+        type: string
+      branch:
+        description: '브랜치명'
+        required: true
+        type: string
+      commit_sha:
+        description: '커밋 SHA'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: 🚀 EC2 서버에 배포
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚀 EC2 배포 시작
+      id: deploy
+      run: |
+        # SSH 키 파일 생성
+        echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # SSH 옵션 설정
+        export SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        
+        # EC2 서버에서 배포 스크립트 실행
+        ssh $SSH_OPTIONS -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e  # 에러 발생시 즉시 종료
+          
+          echo "🚀 배포 시작합니다..."
+          
+          # Docker 로그인
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          
+          # 기존 컨테이너 정리 (에러 무시)
+          echo "🧹 기존 컨테이너 정리 중..."
+          docker stop spring-app || true
+          docker rm spring-app || true
+          
+          # 새 이미지 다운로드
+          echo "📥 새 이미지 다운로드: ${{ inputs.image_tag }}"
+          docker pull ${{ inputs.image_tag }}
+          
+          # 새 컨테이너 시작
+          echo "🏃 새 컨테이너 시작 중..."
+          docker run -d \
+            --name spring-app \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            ${{ inputs.image_tag }}
+          
+          # Health Check 수행 (최대 60초)
+          echo "🏥 애플리케이션 상태 확인 중..."
+          for i in {1..12}; do
+            if curl -f http://localhost:8080/actuator/health 2>/dev/null; then
+              echo "✅ 애플리케이션이 정상적으로 실행 중입니다!"
+              break
+            fi
+            if [ $i -eq 12 ]; then
+              echo "❌ 60초 후에도 Health Check 실패"
+              exit 1
+            fi
+            echo "⏳ 애플리케이션 시작 대기 중... ($i/12)"
+            sleep 5
+          done
+          
+          # 오래된 이미지 정리 (최신 3개 제외)
+          echo "🧹 오래된 Docker 이미지 정리 중..."
+          docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} --format "table {{.Repository}}:{{.Tag}}\t{{.CreatedAt}}" | tail -n +2 | sort -k2 -r | tail -n +4 | awk '{print $1}' | xargs -r docker rmi || true
+          
+          echo "🎉 배포가 성공적으로 완료되었습니다!"
+        EOF
+        
+        # SSH 키 파일 삭제
+        rm -f private_key.pem
+        
+        echo "deploy_result=success" >> $GITHUB_OUTPUT
+      continue-on-error: true
+      
+    - name: ❌ 배포 실패 상태 설정
+      if: failure()
+      run: |
+        echo "deploy_result=failure" >> $GITHUB_OUTPUT
+        rm -f private_key.pem
+        
+    - name: 📋 배포 실패 로그 수집
+      if: failure()
+      run: |
+        echo "DEPLOY_LOGS<<EOF" >> $GITHUB_ENV
+        echo "배포가 실패했습니다. EC2 인스턴스와 Docker 로그를 확인해주세요." >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "일반적인 문제 해결 방법:" >> $GITHUB_ENV
+        echo "1. EC2 인스턴스가 실행 중인지 확인" >> $GITHUB_ENV
+        echo "2. SSH 연결이 가능한지 확인" >> $GITHUB_ENV
+        echo "3. Docker 데몬 상태 확인" >> $GITHUB_ENV
+        echo "4. 애플리케이션 로그 확인: docker logs spring-app" >> $GITHUB_ENV
+        echo "5. 포트 8080이 사용 가능한지 확인" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+    - name: 📨 n8n 웹훅으로 배포 결과 전송
+      if: always()
+      run: |
+        DEPLOY_STATUS="${{ steps.deploy.outputs.deploy_result || 'failure' }}"
+        WEBHOOK_URL="${{ secrets.N8N_WEBHOOK_URL_DEPLOY }}"
+        
+        if [ "$DEPLOY_STATUS" = "success" ]; then
+          MESSAGE="🚀 EC2 배포 완료! 애플리케이션이 정상 실행 중입니다 ✨"
+          DETAILS="배포가 성공적으로 완료되고 Health Check도 통과했습니다"
+        else
+          MESSAGE="💥 EC2 배포 실패! 문제를 확인해주세요 😰"
+          DETAILS="${{ env.DEPLOY_LOGS || '배포 실행 중 오류가 발생했습니다' }}"
+        fi
+        
+        curl -X POST "$WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"status\": \"$DEPLOY_STATUS\",
+            \"message\": \"$MESSAGE\",
+            \"branch\": \"${{ inputs.branch }}\",
+            \"image_tag\": \"${{ inputs.image_tag }}\",
+            \"commit_sha\": \"${{ inputs.commit_sha }}\",
+            \"details\": \"$DETAILS\",
+            \"repository\": \"${{ github.repository }}\",
+            \"workflow_name\": \"EC2 Deploy 워크플로우\",
+            \"workflow_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+          }"
